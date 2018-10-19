@@ -1,0 +1,24 @@
+Pack Recipe:
+  1: LEATHER
+  2: STRING
+  3: LEATHER
+  4: STRING
+  5: CHEST
+  6: STRING
+  7: LEATHER
+  8: STRING
+  9: LEATHER
+
+Pack Upgrades:
+  1->2:
+    IRON_INGOT: 16
+    STRING: 16
+  2->3:
+    REDSTONE: 16
+    STRING: 16
+  3->4:
+    GOLD_INGOT: 16
+    STRING: 16
+  4->5:
+    DIAMOND: 16
+    STRING: 16
