@@ -113,8 +113,7 @@ public class BukkitSerializers {
         setInt(nbt, "yona168_pack_items_size", size);
         Object itemTo = METHOD_ITEM_TO.invoke(null, subject);
         METHOD_ITEM_SET_TAG.invoke(itemTo, nbt);
-        ItemStack result=(ItemStack) METHOD_ITEM_FROM.invoke(null, itemTo);
-        return result;
+        return (ItemStack) METHOD_ITEM_FROM.invoke(null, itemTo);
     }
 
     public static ItemStack serializeInventoryToItem(ItemStack subject, Inventory inv) throws Exception {
@@ -143,7 +142,7 @@ public class BukkitSerializers {
 
     public static Optional<Inventory> getInventoryFromItem(ItemStack subject) throws Exception {
         String name = subject.getItemMeta().getDisplayName();
-        return getInventoryFromItem(subject, name==null||name.isEmpty() ? "Pack" : name);
+        return getInventoryFromItem(subject, name == null || name.isEmpty() ? "Pack" : name);
     }
 
     public static boolean isASerializedInventory(Inventory inv) {
@@ -152,7 +151,7 @@ public class BukkitSerializers {
 
     public static Optional<Integer> getSize(ItemStack item) throws Exception {
         final Object nbt = METHOD_ITEM_GET_TAG.invoke(METHOD_ITEM_TO.invoke(null, item));
-        if(nbt==null)
+        if (nbt == null)
             return empty();
         return getInt(nbt, "yona168_pack_items_size");
     }

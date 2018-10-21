@@ -39,7 +39,6 @@ class Listeners(config: Configuration) : Component() {
                 true -> {
                     val nextLevel = packLevel.next()
                     nextLevel ?: return@myListen
-                    if (!event.player.canUpgradeTo(nextLevel)) return@myListen
                     openGUIToPlayer(event.player, nextLevel, clickedItem)
                 }
                 false -> {
@@ -70,6 +69,12 @@ class Listeners(config: Configuration) : Component() {
     private fun Player.canOpenPack() = this.hasPermission("packs.open")
     private fun Player.canUpgradeTo(level: PackLevel) = this.hasPermission("packs.upgradeto.${level.level}")
     private fun openGUIToPlayer(player: Player, level: PackLevel, pack: ItemStack) {
+        if (!player.canUpgradeTo(level)){
+            if(player.openInventory!=null){
+                player.closeInventory()
+            }
+            return
+        }
         val gui = createGUI(level, pack, player)
         gui.addItems(stuffNeeded.get(level))
         gui.open(player)
@@ -81,9 +86,12 @@ class Listeners(config: Configuration) : Component() {
             name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
             addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
         }) { invClickEvent ->
-            stuffNeeded.get(nextLevel).all { item ->
+            val itemsRemoved=stuffNeeded.get(nextLevel).all { item ->
                 invClickEvent.view.bottomInventory.myRemoveItem(item, item.amount)
-            }.apply { if (!this) return@set }
+            }
+            if(!itemsRemoved){
+                return@set
+            }
             BukkitSerializers.getInventoryFromItem(thePack)
                     .map { inv ->
                         val newInv = Bukkit.createInventory(inv.holder, inv.size + 9, inv.name)
