@@ -12,19 +12,16 @@ import org.bukkit.ChatColor.GREEN
 import org.bukkit.Material
 import org.bukkit.entity.HumanEntity
 import org.bukkit.entity.Player
-import org.bukkit.event.inventory.InventoryClickEvent
-import org.bukkit.event.inventory.InventoryCloseEvent
-import org.bukkit.event.inventory.InventoryType
+import org.bukkit.event.inventory.*
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.*
 import java.nio.file.Path
 
-class Listeners(path: Path) : Component() {
+class Listeners(config: Configuration) : Component() {
     private val stuffNeeded = HashMultimap.create<PackLevel, ItemStack>()
 
     init {
         onEnable {
-            val config = Configuration(path, "config.yml", this.javaClass.classLoader)
             val upgradeSection = config.configuration().getConfigurationSection("Pack Upgrades")
             for (i in 2..5) {
                 val section = upgradeSection.getConfigurationSection("${i - 1}->$i")
@@ -66,6 +63,7 @@ class Listeners(path: Path) : Component() {
             }
 
         }
+
     }
 
 

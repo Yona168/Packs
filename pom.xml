@@ -51,7 +51,7 @@
         <dependency>
             <groupId>com.github.Yona168</groupId>
             <artifactId>Core</artifactId>
-            <version>9a3062c2dc</version>
+            <version>v1.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
