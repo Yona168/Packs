@@ -1,7 +1,7 @@
 main: com.github.yona168.packs.Packs
 name: ${project.name}
 version: ${project.version}
-depend: ["Core"]
+depend: ["Yona168-Core"]
 
 commands:
   pk:

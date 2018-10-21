@@ -1,7 +1,9 @@
 package com.github.yona168.packs.conveniencies
 
 import monotheistic.mongoose.core.utils.ItemBuilder
+import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 
@@ -38,4 +40,4 @@ fun Inventory.myRemoveItem(item: ItemStack, amt: Int): Boolean {
     }
     return false
 }
-
+fun String.toPlayerOrNull(): Player? = Bukkit.getPlayer(this)

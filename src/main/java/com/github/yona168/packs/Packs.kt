@@ -21,7 +21,7 @@ class Packs : ComponentPlugin() {
 
 
         commandSelector ktAddChild GivePack()
-        commandSelector ktAddChild Help(commandSelector.children.asSequence().filter{it is CommandPart}.map { it as CommandPart }.toMutableList())
+        commandSelector ktAddChild Help(commandSelector.commandPartChildren)
         this.onEnable { getCommand("pk").executor = commandSelector }
         addChild(commandSelector)
 

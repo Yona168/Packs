@@ -20,7 +20,7 @@ import org.bukkit.inventory.*
 import java.nio.file.Path
 
 class Listeners(path: Path) : Component() {
-    private val stuffNeeded = HashMultimap.create<Int, ItemStack>()
+    private val stuffNeeded = HashMultimap.create<PackLevel, ItemStack>()
 
     init {
         onEnable {
@@ -29,7 +29,7 @@ class Listeners(path: Path) : Component() {
             for (i in 2..5) {
                 val section = upgradeSection.getConfigurationSection("${i - 1}->$i")
                 section.getKeys(false).forEach {
-                    stuffNeeded.put(i, ItemStack(Material.valueOf(it), section.getInt(it)))
+                    stuffNeeded.put(i.toPackLevelOrNull(), ItemStack(Material.valueOf(it), section.getInt(it)))
                 }
             }
         }
@@ -73,7 +73,7 @@ class Listeners(path: Path) : Component() {
     private fun Player.canUpgradeTo(level: PackLevel) = this.hasPermission("packs.upgradeto.${level.level}")
     private fun openGUIToPlayer(player: Player, level: PackLevel, pack: ItemStack) {
         val gui = createGUI(level, pack, player)
-        gui.addItems(stuffNeeded.get(level.level))
+        gui.addItems(stuffNeeded.get(level))
         gui.open(player)
     }
 
@@ -83,7 +83,7 @@ class Listeners(path: Path) : Component() {
             name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
             addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
         }) { invClickEvent ->
-            stuffNeeded.get(nextLevel.level).all { item ->
+            stuffNeeded.get(nextLevel).all { item ->
                 invClickEvent.view.bottomInventory.myRemoveItem(item, item.amount)
             }.apply { if (!this) return@set }
             BukkitSerializers.getInventoryFromItem(thePack)

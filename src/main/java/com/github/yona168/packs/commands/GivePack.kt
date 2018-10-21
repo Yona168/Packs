@@ -2,6 +2,7 @@ package com.github.yona168.packs.commands
 
 import com.github.yona168.packs.PackLevel
 import com.github.yona168.packs.conveniencies.addItemOrDrop
+import com.github.yona168.packs.conveniencies.toPlayerOrNull
 import com.github.yona168.packs.createPackFor
 import com.github.yona168.packs.toPackLevelOrNull
 import monotheistic.mongoose.core.components.commands.*
@@ -23,9 +24,9 @@ class GivePack : CommandPart(CommandPartInfo("Gives a pack to target player", "g
         }
         val packLevel = args.getOrNull(1)?.toIntOrNull()?.toPackLevelOrNull() ?: PackLevel.COAL
         target.inventory.addItemOrDrop(createPackFor(packLevel))
-        target.sendMessage("$pluginTag $mainColor ${ChatColor.BOLD} ${sender?.name
-                ?: "Herobrine"} ${ChatColor.RESET} $mainColor gave you a pack of level ${ChatColor.BOLD} ${packLevel.level}.")
+        target.sendMessage("$pluginTag $mainColor${ChatColor.BOLD}${sender?.name
+                ?: "Herobrine"}${ChatColor.RESET}$mainColor gave you a pack of level ${ChatColor.BOLD}${packLevel.level}.")
         return Optional.of(true)
     }
-    private fun String.toPlayerOrNull(): Player? = Bukkit.getPlayer(this)
+
 }
