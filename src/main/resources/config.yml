@@ -1,5 +1,12 @@
+#Whether or not to enable crafting
 Crafting: true
+#If crafting is enabled, this defines the recipe.
+#The numbers represent the slots of the crafting table in 3 rows. The top left corner
+#would be 1 and the bottom right 9
+#Values for materials can be found here:
 
+#Make sure they are typed EXACTLY as shown!
+#https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Material.html
 Pack Recipe:
   1: LEATHER
   2: STRING
@@ -11,6 +18,11 @@ Pack Recipe:
   8: STRING
   9: LEATHER
 
+#Key value pairs for upgrading packs. Each pack can be upgraded from levels 1-5 incrementally,
+#each level giving you 9 more slots. The Key-Value pairs represent Materials and amounts of those materials
+#Material values can be found here
+#https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Material.html
+#Make sure they are typed EXACTLY as shown!
 Pack Upgrades:
   1->2:
     IRON_INGOT: 16
