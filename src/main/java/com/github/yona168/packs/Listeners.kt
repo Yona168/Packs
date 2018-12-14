@@ -22,7 +22,7 @@ class Listeners(config: Configuration) : Component() {
 
     init {
         onEnable {
-            val upgradeSection = config.configuration().getConfigurationSection("Pack Upgrades")
+            val upgradeSection = config.getConfigurationSection("Pack Upgrades")
             for (i in 2..5) {
                 val section = upgradeSection.getConfigurationSection("${i - 1}->$i")
                 section.getKeys(false).forEach {

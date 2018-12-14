@@ -26,7 +26,7 @@ class RecipeRegistery(config: Configuration) : Component() {
             val result = createPackFor(PackLevel.COAL)
             val recipe = ShapedRecipe(NamespacedKey(PluginImpl("RecipeRegistry"), "RecipeRegistry"), result)
             recipe.shape("123", "456", "789")
-            val section = config.configuration().getConfigurationSection("Pack Recipe")
+            val section = config.getConfigurationSection("Pack Recipe")
             section.getKeys(false).forEach { recipe.setIngredient(it[0], Material.valueOf(section.getString(it))) }
             Bukkit.addRecipe(recipe)
 

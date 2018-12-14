@@ -1,6 +1,7 @@
 package com.github.yona168.packs;
 
 import monotheistic.mongoose.core.utils.FileUtils;
+import net.minecraft.server.v1_13_R2.NBTCompressedStreamTools;
 import org.bukkit.Bukkit;
 import org.bukkit.craftbukkit.v1_13_R2.inventory.CraftItemStack;
 import org.bukkit.inventory.Inventory;
