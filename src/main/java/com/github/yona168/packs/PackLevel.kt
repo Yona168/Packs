@@ -12,7 +12,8 @@ enum class PackLevel(val level: Int) {
     IRON(2),
     REDSTONE(3),
     GOLD(4),
-    DIAMOND(5);
+    DIAMOND(5),
+    UNATTAINABLE(6);
 
     val slots: Int
         get() = level * 9
@@ -36,14 +37,5 @@ fun ItemStack.getPackLevel(): PackLevel? {
 
 }
 
-fun createPackFor(level: PackLevel): ItemStack {
-   return itemBuilder {
-       type(Material.LEATHER)
-       name("${ChatColor.GRAY}Pack")
-       lore("${ChatColor.GOLD}ID: ${UUID.randomUUID()}")
-   }.run {
-        BukkitSerializers.serializeInventoryToItem(this, Bukkit.createInventory(null, level.slots, this.itemMeta.displayName))
-    }
-}
 
-fun Int.toPackLevelOrNull()=PackLevel.values().find { it.level==this }
+fun Int.toPackLevelOrNull() = PackLevel.values().find { it.level == this }

@@ -36,3 +36,15 @@ Pack Upgrades:
   4->5:
     DIAMOND: 16
     STRING: 16
+
+#Default name to give any given pack
+Default Name: "&7Pack"
+
+#Default Lore to give a pack.
+Default Lore:
+  -"&2Packs By Yona168"
+
+Show Crafter/Creator In Lore: true
+
+#Use @p to specify the player
+Crafter Lore String: "&4Created By @p"

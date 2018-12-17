@@ -2,6 +2,7 @@ package com.github.yona168.packs.conveniencies
 
 import monotheistic.mongoose.core.utils.ItemBuilder
 import org.bukkit.Bukkit
+import org.bukkit.ChatColor
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
@@ -28,7 +29,7 @@ fun Inventory.myRemoveItem(item: ItemStack, amt: Int): Boolean {
         currentItem = this.getItem(i)
         if ((currentItem) != null && currentItem.isSimilar(item)) {
             if (currentItem.amount >= amt) {
-                val theItem=currentItem
+                val theItem = currentItem
                 removeActions.add { theItem.amount = theItem.amount - amt }
                 removeActions.forEach { it.invoke(this) }
                 return true
@@ -40,4 +41,10 @@ fun Inventory.myRemoveItem(item: ItemStack, amt: Int): Boolean {
     }
     return false
 }
+
 fun String.toPlayerOrNull(): Player? = Bukkit.getPlayer(this)
+
+val String.colored: String
+    get() = ChatColor.translateAlternateColorCodes('&', this)
+val List<String>.colored: List<String>
+    get() = map(String::colored)

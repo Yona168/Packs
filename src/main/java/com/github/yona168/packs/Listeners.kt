@@ -5,20 +5,31 @@ import com.gitlab.avelyn.architecture.base.Component
 import com.google.common.collect.HashMultimap
 import monotheistic.mongoose.core.files.Configuration
 import monotheistic.mongoose.core.gui.MyGUI
+import monotheistic.mongoose.core.utils.ItemBuilder
+import monotheistic.mongoose.core.utils.PluginImpl
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
 import org.bukkit.ChatColor.GOLD
 import org.bukkit.ChatColor.GREEN
 import org.bukkit.Material
+import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.conversations.*
 import org.bukkit.entity.HumanEntity
 import org.bukkit.entity.Player
-import org.bukkit.event.inventory.*
+import org.bukkit.event.inventory.InventoryClickEvent
+import org.bukkit.event.inventory.InventoryCloseEvent
+import org.bukkit.event.inventory.InventoryType
 import org.bukkit.event.player.PlayerInteractEvent
-import org.bukkit.inventory.*
-import java.nio.file.Path
+import org.bukkit.inventory.Inventory
+import org.bukkit.inventory.InventoryView
+import org.bukkit.inventory.ItemFlag
+import org.bukkit.inventory.ItemStack
 
-class Listeners(config: Configuration) : Component() {
+class Listeners(config: YamlConfiguration) : Component() {
     private val stuffNeeded = HashMultimap.create<PackLevel, ItemStack>()
+    private val conversationFactory: ConversationFactory = ConversationFactory(PluginImpl("Packs Conversation"))
+            .thatExcludesNonPlayersWithMessage("${pluginInfo.displayName}${ChatColor.RED} You must be a player!").withFirstPrompt(prompt)
+            .withTimeout(15)
 
     init {
         onEnable {
@@ -29,6 +40,7 @@ class Listeners(config: Configuration) : Component() {
                     stuffNeeded.put(i.toPackLevelOrNull(), ItemStack(Material.valueOf(it), section.getInt(it)))
                 }
             }
+
         }
         this ktAddChild myListen<PlayerInteractEvent> { event ->
             val clickedItem = event.item
@@ -62,6 +74,15 @@ class Listeners(config: Configuration) : Component() {
             }
 
         }
+        this ktAddChild myListen<InventoryClickEvent> {
+            val view = it.view
+            val bottomInv=view.bottomInventory
+            if (it.inventory.holder === bottomInv.holder)
+                return@myListen
+            if (BukkitSerializers.isASerializedInventory(view.topInventory) && BukkitSerializers.getSize(it.currentItem).isPresent) {
+                it.isCancelled = true
+            }
+        }
 
     }
 
@@ -69,8 +90,8 @@ class Listeners(config: Configuration) : Component() {
     private fun Player.canOpenPack() = this.hasPermission("packs.open")
     private fun Player.canUpgradeTo(level: PackLevel) = this.hasPermission("packs.upgradeto.${level.level}")
     private fun openGUIToPlayer(player: Player, level: PackLevel, pack: ItemStack) {
-        if (!player.canUpgradeTo(level)){
-            if(player.openInventory!=null){
+        if (!player.canUpgradeTo(level)) {
+            if (player.openInventory != null) {
                 player.closeInventory()
             }
             return
@@ -81,36 +102,91 @@ class Listeners(config: Configuration) : Component() {
     }
 
     private fun createGUI(nextLevel: PackLevel, thePack: ItemStack, player: Player): MyGUI {
-        return MyGUI("$GOLD Materials Needed to Upgrade", 54).set(49, itemBuilder {
-            type(Material.EMERALD_BLOCK)
-            name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
-            addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
-        }) { invClickEvent ->
-            val itemsRemoved=stuffNeeded.get(nextLevel).all { item ->
-                invClickEvent.view.bottomInventory.myRemoveItem(item, item.amount)
-            }
-            if(!itemsRemoved){
-                return@set
-            }
-            BukkitSerializers.getInventoryFromItem(thePack)
-                    .map { inv ->
-                        val newInv = Bukkit.createInventory(inv.holder, inv.size + 9, inv.name)
-                        newInv.contents = inv.contents
-                        newInv
-                    }.ifPresent { newInv ->
-                        val newItem = BukkitSerializers.serializeInventoryToItem(thePack, newInv)
-                        player.inventory.itemInMainHand = newItem
-                    }
-            val afterClickNextLevel = nextLevel.next()
-            if (afterClickNextLevel == null) {
-                player.closeInventory()
-            } else {
-                openGUIToPlayer(player, afterClickNextLevel, player.inventory.itemInMainHand)
+       val gui= MyGUI("$GOLD Materials Needed to Upgrade", 54)
+        if(nextLevel!=PackLevel.UNATTAINABLE) {
+            gui.set(49, itemBuilder {
+                type(Material.EMERALD_BLOCK)
+                name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
+                addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+            }) { invClickEvent ->
+                val itemsRemoved = stuffNeeded.get(nextLevel).all { item ->
+                    invClickEvent.view.bottomInventory.myRemoveItem(item, item.amount)
+                }
+                if (!itemsRemoved) {
+                    return@set
+                }
+                BukkitSerializers.getInventoryFromItem(thePack)
+                        .map { inv ->
+                            val newInv = Bukkit.createInventory(inv.holder, inv.size + 9, inv.name)
+                            newInv.contents = inv.contents
+                            newInv
+                        }.ifPresent { newInv ->
+                            val newItem = BukkitSerializers.serializeInventoryToItem(thePack, newInv)
+                            player.inventory.itemInMainHand = editLevelInfo(newItem, nextLevel)
+                        }
+                val afterClickNextLevel = nextLevel.next()
+                if (afterClickNextLevel == null) {
+                    player.closeInventory()
+                } else {
+                    openGUIToPlayer(player, afterClickNextLevel, player.inventory.itemInMainHand)
+                }
             }
         }
+        gui.set(46, itemBuilder {
+            type(Material.PAPER)
+            amount(1)
+            name("${ChatColor.BOLD}Edit Name")
+            addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
+        }) { invClickEvent ->
+            val playerThatClicked = invClickEvent.whoClicked as Player
+            if (playerThatClicked.hasPermission("packs.edit")) {
+                playerThatClicked.closeInventory()
+                val item = player.inventory.itemInMainHand
+                val conversation = conversationFactory.buildConversation(playerThatClicked)
+                val id = BukkitSerializers.getString(item, "id")
+                conversation.context.setSessionData(ChangePackNameData.ID_OF_ITEM, id.get())
+                conversation.begin()
+            }
+        }
+        return gui
     }
 
 
+}
+
+private val prompt = object : StringPrompt() {
+    override fun getPromptText(p0: ConversationContext?) = "${pluginInfo.displayName}${pluginInfo.mainColor} Enter the desired new name: "
+
+    override fun acceptInput(context: ConversationContext, input: String): Prompt {
+        val player = context.forWhom as Player
+        val item = player.inventory.itemInMainHand
+        val id = BukkitSerializers.getString(item, "id")
+        val contextId = context.getSessionData(ChangePackNameData.ID_OF_ITEM)
+        if (!id.isPresent || id.get() != contextId) {
+            return tryAgainPrompt
+        } else {
+            val name = ChatColor.translateAlternateColorCodes('&', input)
+            context.setSessionData(ChangePackNameData.NAME, name)
+            player.inventory.itemInMainHand = ItemBuilder(item).name(name).build()
+            return confirmedPrompt
+        }
+    }
+
+    private val confirmedPrompt = object : MessagePrompt() {
+        override fun getNextPrompt(p0: ConversationContext?) = Prompt.END_OF_CONVERSATION
+        override fun getPromptText(p0: ConversationContext?) = "${pluginInfo.displayName}${pluginInfo.mainColor} Name Changed to ${ChatColor.RESET}${p0?.getSessionData(ChangePackNameData.NAME)}"
+    }
+    private val tryAgainPrompt = object : MessagePrompt() {
+        override fun getNextPrompt(p0: ConversationContext?) = Prompt.END_OF_CONVERSATION
+        override fun getPromptText(p0: ConversationContext?) = "${pluginInfo.displayName}${ChatColor.RED} You are not holding the pack!"
+    }
+
+
+}
+
+private enum class ChangePackNameData {
+    NAME,
+    ID_OF_ITEM
 }
 
 

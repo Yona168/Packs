@@ -6,7 +6,7 @@
 
     <groupId>github.yona168</groupId>
     <artifactId>Packs</artifactId>
-    <version>1.0</version>
+    <version>1.2</version>
 
     <properties>
         <kotlin.version>1.2.71</kotlin.version>
