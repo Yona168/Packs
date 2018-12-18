@@ -5,21 +5,18 @@ import com.github.yona168.packs.commands.Help
 import com.github.yona168.packs.conveniencies.ktAddChild
 import com.github.yona168.packs.conveniencies.onEnable
 import com.gitlab.avelyn.core.components.ComponentPlugin
-import monotheistic.mongoose.core.components.commands.*
+import monotheistic.mongoose.core.components.commands.CommandSelector
 import monotheistic.mongoose.core.files.Configuration
-import org.bukkit.Bukkit
 import org.bukkit.ChatColor
-import org.bukkit.Server
-import org.bukkit.configuration.file.YamlConfiguration
-import java.io.File
 import kotlin.streams.toList
 
 
 class Packs : ComponentPlugin() {
 
     init {
-        val config = Configuration.loadConfiguration(this.dataFolder.toPath(), "config.yml")
-        addChild(Listeners(config))
+        val config = Configuration.loadConfiguration(this.classLoader,this.dataFolder.toPath(), "config.yml")
+        addChild(PackUsageHandler(config))
+        addChild(PackCreator.ConfigOptionsProcessor(config))
         if (config.getBoolean("Crafting")) {
             addChild(RecipeRegistery(config))
         }

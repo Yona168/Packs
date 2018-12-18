@@ -3,7 +3,6 @@ package com.github.yona168.packs
 import com.github.yona168.packs.conveniencies.*
 import com.gitlab.avelyn.architecture.base.Component
 import com.google.common.collect.HashMultimap
-import monotheistic.mongoose.core.files.Configuration
 import monotheistic.mongoose.core.gui.MyGUI
 import monotheistic.mongoose.core.utils.ItemBuilder
 import monotheistic.mongoose.core.utils.PluginImpl
@@ -25,11 +24,14 @@ import org.bukkit.inventory.InventoryView
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 
-class Listeners(config: YamlConfiguration) : Component() {
+private val ID_TAG = "yona168_packs_id"
+
+class PackUsageHandler(config: YamlConfiguration) : Component() {
     private val stuffNeeded = HashMultimap.create<PackLevel, ItemStack>()
     private val conversationFactory: ConversationFactory = ConversationFactory(PluginImpl("Packs Conversation"))
             .thatExcludesNonPlayersWithMessage("${pluginInfo.displayName}${ChatColor.RED} You must be a player!").withFirstPrompt(prompt)
             .withTimeout(15)
+
 
     init {
         onEnable {
@@ -76,10 +78,11 @@ class Listeners(config: YamlConfiguration) : Component() {
         }
         this ktAddChild myListen<InventoryClickEvent> {
             val view = it.view
-            val bottomInv=view.bottomInventory
+            val bottomInv = view.bottomInventory
             if (it.inventory.holder === bottomInv.holder)
                 return@myListen
-            if (BukkitSerializers.isASerializedInventory(view.topInventory) && BukkitSerializers.getSize(it.currentItem).isPresent) {
+            if (it.currentItem != null && BukkitSerializers.isASerializedInventory(view.topInventory)
+                    && BukkitSerializers.getSize(it.currentItem).filter { it != 0 }.isPresent) {
                 it.isCancelled = true
             }
         }
@@ -89,6 +92,7 @@ class Listeners(config: YamlConfiguration) : Component() {
 
     private fun Player.canOpenPack() = this.hasPermission("packs.open")
     private fun Player.canUpgradeTo(level: PackLevel) = this.hasPermission("packs.upgradeto.${level.level}")
+    private fun Player.canEditPackName() = this.hasPermission("packs.edit")
     private fun openGUIToPlayer(player: Player, level: PackLevel, pack: ItemStack) {
         if (!player.canUpgradeTo(level)) {
             if (player.openInventory != null) {
@@ -102,8 +106,8 @@ class Listeners(config: YamlConfiguration) : Component() {
     }
 
     private fun createGUI(nextLevel: PackLevel, thePack: ItemStack, player: Player): MyGUI {
-       val gui= MyGUI("$GOLD Materials Needed to Upgrade", 54)
-        if(nextLevel!=PackLevel.UNATTAINABLE) {
+        val gui = MyGUI("$GOLD Materials Needed to Upgrade", 54)
+        if (nextLevel != PackLevel.UNATTAINABLE) {
             gui.set(49, itemBuilder {
                 type(Material.EMERALD_BLOCK)
                 name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
@@ -122,7 +126,7 @@ class Listeners(config: YamlConfiguration) : Component() {
                             newInv
                         }.ifPresent { newInv ->
                             val newItem = BukkitSerializers.serializeInventoryToItem(thePack, newInv)
-                            player.inventory.itemInMainHand = editLevelInfo(newItem, nextLevel)
+                            player.inventory.itemInMainHand = PackCreator.editLevelInfo(newItem, nextLevel)
                         }
                 val afterClickNextLevel = nextLevel.next()
                 if (afterClickNextLevel == null) {
@@ -139,11 +143,11 @@ class Listeners(config: YamlConfiguration) : Component() {
             addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
         }) { invClickEvent ->
             val playerThatClicked = invClickEvent.whoClicked as Player
-            if (playerThatClicked.hasPermission("packs.edit")) {
+            if (playerThatClicked.canEditPackName()) {
                 playerThatClicked.closeInventory()
                 val item = player.inventory.itemInMainHand
                 val conversation = conversationFactory.buildConversation(playerThatClicked)
-                val id = BukkitSerializers.getString(item, "id")
+                val id = BukkitSerializers.getString(item, ID_TAG)
                 conversation.context.setSessionData(ChangePackNameData.ID_OF_ITEM, id.get())
                 conversation.begin()
             }
@@ -160,7 +164,7 @@ private val prompt = object : StringPrompt() {
     override fun acceptInput(context: ConversationContext, input: String): Prompt {
         val player = context.forWhom as Player
         val item = player.inventory.itemInMainHand
-        val id = BukkitSerializers.getString(item, "id")
+        val id = BukkitSerializers.getString(item, ID_TAG)
         val contextId = context.getSessionData(ChangePackNameData.ID_OF_ITEM)
         if (!id.isPresent || id.get() != contextId) {
             return tryAgainPrompt

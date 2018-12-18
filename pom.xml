@@ -9,7 +9,7 @@
     <version>1.2.1</version>
 
     <properties>
-        <kotlin.version>1.2.71</kotlin.version>
+        <kotlin.version>1.3.10</kotlin.version>
     </properties>
 
     <repositories>
@@ -51,7 +51,7 @@
         <dependency>
             <groupId>com.github.Yona168</groupId>
             <artifactId>Core</artifactId>
-            <version>4af0bd7045</version>
+            <version>8891f237d7</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
