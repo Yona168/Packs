@@ -4,27 +4,24 @@ import com.github.yona168.packs.conveniencies.colored
 import com.github.yona168.packs.conveniencies.itemBuilder
 import com.gitlab.avelyn.architecture.base.Component
 import org.bukkit.Bukkit
-import org.bukkit.ChatColor
 import org.bukkit.Material
 import org.bukkit.command.CommandSender
 import org.bukkit.configuration.file.YamlConfiguration
+import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import java.util.*
 
 
 object PackCreator : Component() {
     private lateinit var lore: MutableList<String>
-    private var playerLore: String? = null
     private lateinit var defaultName: String
     fun createPackFor(level: PackLevel): ItemStack {
         val uuid = UUID.randomUUID()
         return itemBuilder {
             type(Material.LEATHER)
             name(defaultName)
-            val clone = ArrayList(lore)
-            clone.add(0, "${ChatColor.GOLD}ID: $uuid")
-            clone.add(1, "${pluginInfo.secondaryColor}Level: ${level.level}")
-            lore(clone)
+            lore(ArrayList(lore))
+            addItemFlags(*ItemFlag.values())
         }.run {
             var item = BukkitSerializers.serializeInventoryToItem(this, Bukkit.createInventory(null, level.slots, this.itemMeta.displayName))
             item = BukkitSerializers.setString(item, "yona168_packs_id", uuid.toString())
@@ -34,15 +31,28 @@ object PackCreator : Component() {
 
     fun createPackFor(level: PackLevel, player: CommandSender): ItemStack {
         val item = createPackFor(level)
-        if (playerLore != null) {
-            addPlayerLore(player, item)
-        }
+        editItemWithPlaceholders(item, level, player)
         return item
     }
 
-    fun editLevelInfo(item: ItemStack, level: PackLevel): ItemStack {
-        item.setLore(1, "${pluginInfo.secondaryColor}Level: ${level.level}")
+    fun editItemWithPlaceholders(item: ItemStack, level: PackLevel, player: CommandSender): ItemStack {
+        item.mapLore { it.applyPlaceholders(player, level) }
+        item.mapName { it.applyPlaceholders(player, level) }
         return item
+    }
+
+    private fun ItemStack.mapName(func: (String) -> String) {
+        val meta = this.itemMeta
+        val name = func(meta.displayName)
+        meta.displayName = name
+        this.itemMeta = meta
+    }
+
+    private fun ItemStack.mapLore(func: (String) -> String) {
+        val meta = this.itemMeta
+        val newLore = meta.lore.map(func)
+        meta.lore = newLore
+        this.itemMeta = meta
     }
 
     private fun ItemStack.setLore(index: Int, line: String) {
@@ -53,19 +63,15 @@ object PackCreator : Component() {
         itemMeta = meta
     }
 
-    fun addPlayerLore(whoMadeIt: CommandSender, item: ItemStack) {
-        item.addLore((playerLore as String).replace("@p", whoMadeIt.name))
-    }
-
     private fun ItemStack.addLore(line: String) = setLore(itemMeta.lore.size, line)
+    private fun String.applyPlaceholders(player: CommandSender, level: PackLevel): String {
+        return this.replace("@p", player.name).replace("@l", level.level.toString())
+    }
 
     class ConfigOptionsProcessor(config: YamlConfiguration) : Component() {
         init {
             onEnable {
                 lore = config.getStringList("Default Lore").colored.toMutableList()
-                if (config.getBoolean("Show Crafter/Creator In Lore")) {
-                    playerLore = config.getString("Crafter Lore String").colored
-                }
                 defaultName = (config.getString("Default Name") ?: "&7pack").colored
             }
         }

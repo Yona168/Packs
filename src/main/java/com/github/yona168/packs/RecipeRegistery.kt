@@ -39,7 +39,7 @@ class RecipeRegistery(config: YamlConfiguration) : Component() {
 
 private fun CraftItemEvent.onCraftItem() {
     whoClicked ?: return
-    PackCreator.addPlayerLore(whoClicked as Player, this.currentItem)
+    PackCreator.editItemWithPlaceholders( this.currentItem, PackLevel.COAL,whoClicked as Player)
     if (!whoClicked.hasPermission("packs.craft") && inventory.result?.getPackLevel() != null) {
         isCancelled = true
     }

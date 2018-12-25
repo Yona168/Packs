@@ -37,17 +37,12 @@ Pack Upgrades:
     DIAMOND: 16
     STRING: 16
 
-#Default name to give any given pack
-Default Name: "&7Cool Custom-Named &4Pack!"
+#Default name to give any given pack-Use @p to reference the pack creator, and @l to reference the level!
+Default Name: "&7Cool Custom-Named &4Pack!-Owned by @p. Level: @l"
 
-#Default Lore to give a pack.
+#Default Lore to give a pack. You can use @p and @l down here as well!
 Default Lore:
   - "Default Lore is cool"
   - "You might want to edit me in the highly customizable config!"
   - "&4-Yona168 :)"
 
-
-Show Crafter/Creator In Lore: true
-
-#Use @p to specify the player
-Crafter Lore String: "&4Created By @p"

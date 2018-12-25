@@ -3,13 +3,13 @@ package com.github.yona168.packs
 import com.github.yona168.packs.conveniencies.*
 import com.gitlab.avelyn.architecture.base.Component
 import com.google.common.collect.HashMultimap
+import monotheistic.mongoose.core.gui.GUI
 import monotheistic.mongoose.core.gui.MyGUI
 import monotheistic.mongoose.core.utils.ItemBuilder
 import monotheistic.mongoose.core.utils.PluginImpl
 import org.bukkit.Bukkit
 import org.bukkit.ChatColor
-import org.bukkit.ChatColor.GOLD
-import org.bukkit.ChatColor.GREEN
+import org.bukkit.ChatColor.*
 import org.bukkit.Material
 import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.conversations.*
@@ -24,6 +24,7 @@ import org.bukkit.inventory.InventoryView
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 
+
 private val ID_TAG = "yona168_packs_id"
 
 class PackUsageHandler(config: YamlConfiguration) : Component() {
@@ -31,7 +32,87 @@ class PackUsageHandler(config: YamlConfiguration) : Component() {
     private val conversationFactory: ConversationFactory = ConversationFactory(PluginImpl("Packs Conversation"))
             .thatExcludesNonPlayersWithMessage("${pluginInfo.displayName}${ChatColor.RED} You must be a player!").withFirstPrompt(prompt)
             .withTimeout(15)
+    private val CANNOT_UPGRADE = itemBuilder {
+        type(Material.REDSTONE_BLOCK)
+        name("$RED${BOLD}You cannot upgrade this pack any farther!")
+        addItemFlags(*ItemFlag.values())
+    }
+    private val UPGRADE = itemBuilder {
+        type(Material.EMERALD_BLOCK)
+        name("${GREEN}${BOLD}Upgrade pack size!")
+        addItemFlags(*ItemFlag.values())
+    }
+    private val RENAME_PACK = itemBuilder {
+        type(Material.PAPER)
+        addItemFlags(*ItemFlag.values())
+        name("$WHITE${BOLD}Rename your pack!")
+    }
+    private val BACK_TO_MAIN= itemBuilder {
+        type(Material.REDSTONE_BLOCK)
+        addItemFlags(*ItemFlag.values())
+        name("$RED$BOLD<--- Back")
+    }
 
+    fun mainMenuGui(nextPackLevel: PackLevel?, player: Player, thePack: ItemStack): GUI {
+        val gui = MyGUI(pluginInfo.displayName, 9).apply {
+            if (nextPackLevel == null) {
+                set(CANNOT_UPGRADE, 4)
+            } else {
+                set(4, UPGRADE) {
+                    openGUIToPlayer(player, nextPackLevel, thePack)
+                }
+            }
+            set(3, RENAME_PACK)
+            { invClickEvent ->
+                val playerThatClicked = invClickEvent.whoClicked as Player
+                if (playerThatClicked.canEditPackName()) {
+                    playerThatClicked.closeInventory()
+                    val item = player.inventory.itemInMainHand
+                    val conversation = conversationFactory.buildConversation(playerThatClicked)
+                    val id = BukkitSerializers.getString(item, ID_TAG)
+                    conversation.context.setSessionData(ChangePackNameData.ID_OF_ITEM, id.get())
+                    conversation.begin()
+                }
+            }
+        }
+        return gui
+    }
+
+    private fun upgradeGui(nextLevel: PackLevel, thePack: ItemStack, player: Player): GUI {
+        val gui = MyGUI("$GOLD Materials Needed to Upgrade", 54)
+        gui.set(49, itemBuilder {
+            type(Material.EMERALD_BLOCK)
+            name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
+            addItemFlags(*ItemFlag.values())
+        }) { invClickEvent ->
+            val itemsRemoved = stuffNeeded.get(nextLevel).all { item ->
+                invClickEvent.view.bottomInventory.myRemoveItem(item, item.amount)
+            }
+            if (!itemsRemoved) {
+                return@set
+            }
+            BukkitSerializers.getInventoryFromItem(thePack)
+                    .map { inv ->
+                        val newInv = Bukkit.createInventory(inv.holder, inv.size + 9, inv.name)
+                        newInv.contents = inv.contents
+                        newInv
+                    }.ifPresent { newInv ->
+                        val newItem = BukkitSerializers.serializeInventoryToItem(thePack, newInv)
+                        player.inventory.itemInMainHand = PackCreator.editItemWithPlaceholders(newItem, nextLevel, player)
+                    }
+            val afterClickNextLevel = nextLevel.next()
+            if (afterClickNextLevel == null) {
+                player.closeInventory()
+            } else {
+                openGUIToPlayer(player, afterClickNextLevel, player.inventory.itemInMainHand)
+            }
+        }
+        gui.set(45, BACK_TO_MAIN){
+            player.closeInventory()
+            mainMenuGui(nextLevel, player, player.inventory.itemInMainHand).open(player)
+        }
+        return gui
+    }
 
     init {
         onEnable {
@@ -52,8 +133,7 @@ class PackUsageHandler(config: YamlConfiguration) : Component() {
             when (event.player.isSneaking) {
                 true -> {
                     val nextLevel = packLevel.next()
-                    nextLevel ?: return@myListen
-                    openGUIToPlayer(event.player, nextLevel, clickedItem)
+                    mainMenuGui(nextLevel, event.player, clickedItem).open(event.player)
                 }
                 false -> {
                     if (!event.player.canOpenPack()) return@myListen
@@ -100,59 +180,9 @@ class PackUsageHandler(config: YamlConfiguration) : Component() {
             }
             return
         }
-        val gui = createGUI(level, pack, player)
-        gui.addItems(stuffNeeded.get(level))
+        val gui = upgradeGui(level, pack, player)
+        stuffNeeded[level].forEach { gui.addItems(it) }
         gui.open(player)
-    }
-
-    private fun createGUI(nextLevel: PackLevel, thePack: ItemStack, player: Player): MyGUI {
-        val gui = MyGUI("$GOLD Materials Needed to Upgrade", 54)
-        if (nextLevel != PackLevel.UNATTAINABLE) {
-            gui.set(49, itemBuilder {
-                type(Material.EMERALD_BLOCK)
-                name("$GREEN ${ChatColor.BOLD}>> Upgrade to level ${nextLevel.level} for ${nextLevel.slots} slots! <<")
-                addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
-            }) { invClickEvent ->
-                val itemsRemoved = stuffNeeded.get(nextLevel).all { item ->
-                    invClickEvent.view.bottomInventory.myRemoveItem(item, item.amount)
-                }
-                if (!itemsRemoved) {
-                    return@set
-                }
-                BukkitSerializers.getInventoryFromItem(thePack)
-                        .map { inv ->
-                            val newInv = Bukkit.createInventory(inv.holder, inv.size + 9, inv.name)
-                            newInv.contents = inv.contents
-                            newInv
-                        }.ifPresent { newInv ->
-                            val newItem = BukkitSerializers.serializeInventoryToItem(thePack, newInv)
-                            player.inventory.itemInMainHand = PackCreator.editLevelInfo(newItem, nextLevel)
-                        }
-                val afterClickNextLevel = nextLevel.next()
-                if (afterClickNextLevel == null) {
-                    player.closeInventory()
-                } else {
-                    openGUIToPlayer(player, afterClickNextLevel, player.inventory.itemInMainHand)
-                }
-            }
-        }
-        gui.set(46, itemBuilder {
-            type(Material.PAPER)
-            amount(1)
-            name("${ChatColor.BOLD}Edit Name")
-            addItemFlags(ItemFlag.HIDE_ATTRIBUTES)
-        }) { invClickEvent ->
-            val playerThatClicked = invClickEvent.whoClicked as Player
-            if (playerThatClicked.canEditPackName()) {
-                playerThatClicked.closeInventory()
-                val item = player.inventory.itemInMainHand
-                val conversation = conversationFactory.buildConversation(playerThatClicked)
-                val id = BukkitSerializers.getString(item, ID_TAG)
-                conversation.context.setSessionData(ChangePackNameData.ID_OF_ITEM, id.get())
-                conversation.begin()
-            }
-        }
-        return gui
     }
 
 
